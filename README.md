@@ -8,4 +8,13 @@
 ![캡처](https://user-images.githubusercontent.com/22078438/57360577-6f30d000-71b5-11e9-89a6-24034a3ecdde.PNG)
 
 ## Experiments
-- WORK IN PROCESS
+- For CIFAR-10 and CIFAR-100 data, I experimented with resize (224, 224).<br>
+
+| Datasets | Model | Accuracy | Epoch | Training Time | Parameters
+| :---: | :---: | :---: | :---: | :---: | :---: |
+CIFAR-100 | MobileNetV3(LARGE) | 59.79% | 100 | 3h 13m | 2.5M
+CIFAR-10 | WORK IN PROCESS | | | |
+IMAGENET | WORK IN PROCESS | | | |
+
+## Requirements
+- torch==1.0.1
