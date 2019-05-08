@@ -17,9 +17,9 @@ device = torch.device("cuda" if use_cuda else "cpu")
 def get_args():
     parser = argparse.ArgumentParser("parameters")
 
-    parser.add_argument("--dataset-mode", type=str, default="CIFAR100", help="(example: CIFAR10, CIFAR100, MNIST), (default: CIFAR100)")
+    parser.add_argument("--dataset-mode", type=str, default="CIFAR100", help="(example: CIFAR10, CIFAR100), (default: CIFAR100)")
     parser.add_argument("--epochs", type=int, default=100, help="number of epochs, (default: 100)")
-    parser.add_argument("--batch-size", type=int, default=100, help="number of batch size, (default, 8)")
+    parser.add_argument("--batch-size", type=int, default=128, help="number of batch size, (default, 128)")
     parser.add_argument("--learning-rate", type=float, default=1e-1, help="learning_rate, (default: 1e-1)")
     parser.add_argument("--dropout", type=float, default=0.3, help="dropout rate, (default: 0.3)")
     parser.add_argument("--load-pretrained", type=bool, default=False)
@@ -31,7 +31,7 @@ def get_args():
 
 def adjust_learning_rate(optimizer, epoch, args):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    lr = args.learning_rate * (0.1 ** (epoch // 30))
+    lr = args.learning_rate * (0.1 ** (epoch // 40))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
