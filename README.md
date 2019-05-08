@@ -9,3 +9,6 @@
 
 ## Experiments
 - WORK IN PROCESS
+
+## Requirements
+- torch==1.0.1
