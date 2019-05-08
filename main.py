@@ -88,8 +88,6 @@ def main():
         num_classes = 10
     elif args.dataset_mode is "CIFAR100":
         num_classes = 100
-    elif args.dataset_mode is "MNIST":
-        num_classes = 10
 
     if args.load_pretrained:
         model = MobileNetV3(model_mode=args.model_mode, num_classes=num_classes).to(device)
