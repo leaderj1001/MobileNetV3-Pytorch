@@ -81,9 +81,10 @@ class bneck(nn.Module):
 
 
 class MobileNetV3(nn.Module):
-    def __init__(self, model_mode="LARGE"):
+    def __init__(self, model_mode="LARGE", num_classes=1000):
         super(MobileNetV3, self).__init__()
         self.activation_HS = nn.ReLU6(inplace=True)
+        self.num_classes = num_classes
 
         if model_mode == "LARGE":
             self.init_conv = nn.Sequential(
@@ -117,11 +118,41 @@ class MobileNetV3(nn.Module):
                 nn.Conv2d(960, 1280, kernel_size=1, stride=1),
             )
             self.conv3 = nn.Sequential(
-                nn.Conv2d(1280, 100, kernel_size=1, stride=1),
+                nn.Conv2d(1280, self.num_classes, kernel_size=1, stride=1),
             )
 
         elif model_mode == "SMALL":
-            pass
+            self.init_conv = nn.Sequential(
+                nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(16),
+            )
+
+            self.block = nn.Sequential(
+                bneck(in_channels=16, out_channels=16, kernal_size=3, stride=2, HS=False, RE=True, SE=True, dense_layer=16),
+                bneck(in_channels=16, out_channels=24, kernal_size=3, stride=2, HS=False, RE=True, SE=False, dense_layer=72),
+                bneck(in_channels=24, out_channels=24, kernal_size=3, stride=1, HS=False, RE=True, SE=False,dense_layer=88),
+                bneck(in_channels=24, out_channels=40, kernal_size=5, stride=2, HS=True, RE=False, SE=True, dense_layer=96, padding=2),
+                bneck(in_channels=40, out_channels=40, kernal_size=5, stride=1, HS=True, RE=False, SE=True, dense_layer=240, padding=2),
+                bneck(in_channels=40, out_channels=40, kernal_size=5, stride=1, HS=True, RE=False, SE=True, dense_layer=240, padding=2),
+                bneck(in_channels=40, out_channels=48, kernal_size=5, stride=1, HS=True, RE=False, SE=True, dense_layer=120, padding=2),
+                bneck(in_channels=48, out_channels=48, kernal_size=5, stride=1, HS=True, RE=False, SE=True, dense_layer=144, padding=2),
+                bneck(in_channels=48, out_channels=96, kernal_size=5, stride=2, HS=True, RE=False, SE=True, dense_layer=288, padding=2),
+                bneck(in_channels=96, out_channels=96, kernal_size=5, stride=1, HS=True, RE=False, SE=True, dense_layer=576, padding=2),
+                bneck(in_channels=96, out_channels=96, kernal_size=5, stride=1, HS=True, RE=False, SE=True, dense_layer=576, padding=2),
+            )
+
+            self.conv1 = nn.Sequential(
+                nn.Conv2d(96, 576, kernel_size=1, stride=1),
+                nn.BatchNorm2d(576),
+            )
+
+            self.conv2 = nn.Sequential(
+                nn.Conv2d(576, 1280, kernel_size=1, stride=1),
+            )
+
+            self.conv3 = nn.Sequential(
+                nn.Conv2d(1280, self.num_classes, kernel_size=1, stride=1),
+            )
 
         self.apply(_weights_init)
 
@@ -136,10 +167,10 @@ class MobileNetV3(nn.Module):
         output = self.conv2(output)
         output = self.activation_HS(output + 3) / 6 * output
         output = self.conv3(output)
-        output = torch.reshape(output, shape=(-1, 100))
+        output = torch.reshape(output, shape=(-1, self.num_classes))
         return output
 
 
 # temp = torch.zeros((1, 3, 224, 224))
-# model = MobileNetV3()
+# model = MobileNetV3(model_mode="SMALL")
 # print(model(temp).shape)

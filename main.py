@@ -100,7 +100,7 @@ def main():
         max_test_acc = acc
         print("Load Model Accuracy: ", acc, "Load Model end epoch: ", epoch)
     else:
-        model = MobileNetV3().to(device)
+        model = MobileNetV3(model_mode="LARGE", num_classes=num_classes).to(device)
         epoch = 1
         max_test_acc = 0
     # if device is "cuda":
