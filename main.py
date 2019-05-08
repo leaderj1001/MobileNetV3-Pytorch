@@ -22,6 +22,7 @@ def get_args():
     parser.add_argument("--batch-size", type=int, default=128, help="number of batch size, (default, 128)")
     parser.add_argument("--learning-rate", type=float, default=1e-1, help="learning_rate, (default: 1e-1)")
     parser.add_argument("--dropout", type=float, default=0.3, help="dropout rate, (default: 0.3)")
+    parser.add_argument('--model-mode', type=str, default="LARGE", help="(example: LARGE, SMALL), (default: LARGE)")
     parser.add_argument("--load-pretrained", type=bool, default=False)
 
     args = parser.parse_args()
@@ -91,7 +92,7 @@ def main():
         num_classes = 10
 
     if args.load_pretrained:
-        model = MobileNetV3().to(device)
+        model = MobileNetV3(model_mode=args.model_mode, num_classes=num_classes).to(device)
         filename = "best_model_"
         checkpoint = torch.load('./checkpoint/' + filename + 'ckpt.t7')
         model.load_state_dict(checkpoint['model'])
@@ -100,7 +101,7 @@ def main():
         max_test_acc = acc
         print("Load Model Accuracy: ", acc, "Load Model end epoch: ", epoch)
     else:
-        model = MobileNetV3(model_mode="LARGE", num_classes=num_classes).to(device)
+        model = MobileNetV3(model_mode=args.model_mode, num_classes=num_classes).to(device)
         epoch = 1
         max_test_acc = 0
     # if device is "cuda":

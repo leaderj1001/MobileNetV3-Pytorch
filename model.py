@@ -130,7 +130,7 @@ class MobileNetV3(nn.Module):
             self.block = nn.Sequential(
                 bneck(in_channels=16, out_channels=16, kernal_size=3, stride=2, HS=False, RE=True, SE=True, dense_layer=16),
                 bneck(in_channels=16, out_channels=24, kernal_size=3, stride=2, HS=False, RE=True, SE=False, dense_layer=72),
-                bneck(in_channels=24, out_channels=24, kernal_size=3, stride=1, HS=False, RE=True, SE=False,dense_layer=88),
+                bneck(in_channels=24, out_channels=24, kernal_size=3, stride=1, HS=False, RE=True, SE=False, dense_layer=88),
                 bneck(in_channels=24, out_channels=40, kernal_size=5, stride=2, HS=True, RE=False, SE=True, dense_layer=96, padding=2),
                 bneck(in_channels=40, out_channels=40, kernal_size=5, stride=1, HS=True, RE=False, SE=True, dense_layer=240, padding=2),
                 bneck(in_channels=40, out_channels=40, kernal_size=5, stride=1, HS=True, RE=False, SE=True, dense_layer=240, padding=2),
@@ -154,7 +154,7 @@ class MobileNetV3(nn.Module):
                 nn.Conv2d(1280, self.num_classes, kernel_size=1, stride=1),
             )
 
-        self.apply(_weights_init)
+        # self.apply(_weights_init)
 
     def forward(self, x):
         output = self.init_conv(x)
@@ -172,5 +172,5 @@ class MobileNetV3(nn.Module):
 
 
 # temp = torch.zeros((1, 3, 224, 224))
-# model = MobileNetV3(model_mode="SMALL")
+# model = MobileNetV3()
 # print(model(temp).shape)
