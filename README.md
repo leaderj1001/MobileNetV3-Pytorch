@@ -8,11 +8,11 @@
 ![캡처](https://user-images.githubusercontent.com/22078438/57360577-6f30d000-71b5-11e9-89a6-24034a3ecdde.PNG)
 
 ## Experiments
-| Datasets | Model | Accuracy | Epoch | Training Time |
-| :---: | :---: | :---: | :---: | :---: |
-CIFAR-100 | MobileNetV3(LARGE) | 59.79% | 100 | 3h 13m
-CIFAR-10 | WORK IN PROCESS | | |
-IMAGENET | WORK IN PROCESS | | |
+| Datasets | Model | Accuracy | Epoch | Training Time | Parameters
+| :---: | :---: | :---: | :---: | :---: | :---: |
+CIFAR-100 | MobileNetV3(LARGE) | 59.79% | 100 | 3h 13m | 2.5M
+CIFAR-10 | WORK IN PROCESS | | | |
+IMAGENET | WORK IN PROCESS | | | |
 
 ## Requirements
 - torch==1.0.1
