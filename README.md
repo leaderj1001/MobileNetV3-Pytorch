@@ -1,4 +1,4 @@
-# Implementing MobileNetV3 using Pytorch
+# Implementing Searching for MobileNetV3 paper using Pytorch
 - The current model is a very early model.  will modify it as a general model as soon as possible.
 ## Paper
 - [Searching for MobileNetV3 paper](https://arxiv.org/abs/1905.02244)
