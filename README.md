@@ -15,7 +15,7 @@
 
 | Datasets | Model | Accuracy | Epoch | Training Time | Parameters
 | :---: | :---: | :---: | :---: | :---: | :---: |
-CIFAR-100 | MobileNetV3(LARGE) | 64.30% | 100 | 3h 23m | 2.5M
+CIFAR-100 | MobileNetV3(LARGE) | 64.64% | 62 | 1h 56m | 2.5M
 CIFAR-100 | MobileNetV3(SMALL) | 62.29% | 86 | 2h 17m | 1.2M
 IMAGENET | WORK IN PROCESS | | | |
 
