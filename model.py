@@ -2,16 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import math
-import numpy as np
-
-
-def hard_sigmoid(x):
-    out = (0.2 * x) + 0.5
-    out = F.threshold(-out, -1., -1.)
-    out = F.threshold(-out, 0., 0.)
-    return out
-
 
 def _weights_init(m):
     if isinstance(m, nn.Conv2d):
@@ -27,74 +17,93 @@ def _weights_init(m):
         m.bias.data.zero_()
 
 
-class bneck(nn.Module):
-    def __init__(self, in_channels, out_channels, kernal_size, stride, HS, RE, SE, exp_size, padding=1):
-        super(bneck, self).__init__()
+def hard_sigmoid(x):
+    out = (0.2 * x) + 0.5
+    out = F.threshold(-out, -1., -1.)
+    out = F.threshold(-out, 0., 0.)
+    return out
+
+
+class h_swish(nn.Module):
+    def __init__(self, inplace=True):
+        super(h_swish, self).__init__()
+        self.activation = nn.ReLU6(inplace)
+
+    def forward(self, x):
+        out = self.activation(x + 3.) / 6.
+        return out * x
+
+
+class SqueezeBlock(nn.Module):
+    def __init__(self, exp_size, divide=4):
+        super(SqueezeBlock, self).__init__()
+        self.dense = nn.Sequential(
+            nn.Linear(exp_size, exp_size // divide),
+            nn.ReLU(inplace=True),
+            nn.Linear(exp_size // divide, exp_size)
+        )
+
+    def forward(self, x):
+        batch, channels, height, width = x.size()
+        out = F.avg_pool2d(x, kernel_size=[height, width]).view(batch, -1)
+        out = self.dense(out)
+        out = out.view(batch, channels, 1, 1)
+        out = hard_sigmoid(out)
+
+        return out * x
+
+
+class MobileBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernal_size, stride, nonLinear, SE, exp_size):
+        super(MobileBlock, self).__init__()
         self.out_channels = out_channels
-        self.HS = HS
-        self.RE = RE
+        self.nonLinear = nonLinear
         self.SE = SE
+        padding = (kernal_size - 1) // 2
 
         self.use_connect = stride == 1 and in_channels == out_channels
 
-        if self.RE == True:
-            self.activation_RE = nn.ReLU(inplace=True)
-        elif self.HS == True:
-            self.activation_HS = nn.ReLU6(inplace=True)
+        if self.nonLinear == "RE":
+            activation = nn.ReLU
+        else:
+            activation = h_swish
+
         self.conv = nn.Sequential(
-            nn.Conv2d(in_channels=in_channels, out_channels=exp_size, kernel_size=1, stride=1, padding=0, bias=False),
+            nn.Conv2d(in_channels, exp_size, kernel_size=1, stride=1, padding=0, bias=False),
             nn.BatchNorm2d(exp_size),
+            activation(inplace=True)
         )
         self.depth_conv = nn.Sequential(
-            nn.Conv2d(in_channels=exp_size, out_channels=exp_size, kernel_size=kernal_size, stride=stride,
-                      padding=padding, groups=exp_size),
+            nn.Conv2d(exp_size, exp_size, kernel_size=kernal_size, stride=stride, padding=padding, groups=exp_size),
             nn.BatchNorm2d(exp_size),
         )
 
-        if self.SE == True:
-            self.squeeze = nn.Sequential(
-                nn.Linear(exp_size, exp_size // 4),
-                nn.ReLU(inplace=True),
-                nn.Linear(exp_size // 4, exp_size),
-            )
+        if self.SE:
+            self.squeeze_block = SqueezeBlock(exp_size)
 
-        self.conv1x1 = nn.Sequential(
+        self.point_conv = nn.Sequential(
             nn.Conv2d(exp_size, out_channels, kernel_size=1, stride=1, padding=0),
-            nn.BatchNorm2d(out_channels)
+            nn.BatchNorm2d(out_channels),
+            activation(inplace=True)
         )
 
     def forward(self, x):
         # MobileNetV2
-        output = self.conv(x)
-        if self.RE == True:
-            output = self.activation_RE(output)
-        elif self.HS == True:
-            output = self.activation_HS(output + 3.) / 6. * output
-        output = self.depth_conv(output)
-        batch, channels, height, width = output.size()
-        original_output = output
+        out = self.conv(x)
+        out = self.depth_conv(out)
 
         # Squeeze and Excite
-        if self.SE == True:
-            global_pooled_output = F.avg_pool2d(output, kernel_size=[height, width])
-            global_pooled_output = torch.reshape(global_pooled_output, shape=(-1, channels))
-            squeeze = self.squeeze(global_pooled_output)
-            squeeze = torch.reshape(squeeze, shape=(-1, channels, 1, 1))
-            # squeeze = F.sigmoid(squeeze)
-            squeeze = hard_sigmoid(squeeze)
-            output = original_output * squeeze
+        if self.SE:
+            out = self.squeeze_block(out)
 
         # point-wise conv
-        output = self.conv1x1(output)
-        if self.RE == True:
-            output = self.activation_RE(output)
-        elif self.HS == True:
-            output = self.activation_HS(output + 3.) / 6. * output
+        out = self.point_conv(out)
 
+        # connection
         if self.use_connect:
-            return x + output
+            return x + out
         else:
-            return output
+            return out
 
 
 class MobileNetV3(nn.Module):
@@ -102,119 +111,100 @@ class MobileNetV3(nn.Module):
         super(MobileNetV3, self).__init__()
         self.activation_HS = nn.ReLU6(inplace=True)
         self.num_classes = num_classes
-        print(self.num_classes)
+        print("num classes: ", self.num_classes)
 
         if model_mode == "LARGE":
+            layers = [
+                [16, 16, 3, 1, "RE", False, 16],
+                [16, 24, 3, 2, "RE", False, 64],
+                [24, 24, 3, 1, "RE", False, 72],
+                [24, 40, 5, 2, "RE", True, 72],
+                [40, 40, 5, 1, "RE", True, 120],
+
+                [40, 40, 5, 1, "RE", True, 120],
+                [40, 80, 3, 2, "HS", False, 240],
+                [80, 80, 3, 1, "HS", False, 200],
+                [80, 80, 3, 1, "HS", False, 184],
+                [80, 80, 3, 1, "HS", False, 184],
+
+                [80, 112, 3, 1, "HS", True, 480],
+                [112, 112, 3, 1, "HS", True, 672],
+                [112, 160, 5, 1, "HS", True, 672],
+                [160, 160, 5, 2, "HS", True, 672],
+                [160, 160, 5, 1, "HS", True, 960],
+            ]
             self.init_conv = nn.Sequential(
                 nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, stride=2, padding=1),
                 nn.BatchNorm2d(16),
+                h_swish(inplace=True),
             )
 
-            self.block = nn.Sequential(
-                bneck(in_channels=16, out_channels=16, kernal_size=3, stride=1, HS=False, RE=True, SE=False,
-                      exp_size=16),
-                bneck(in_channels=16, out_channels=24, kernal_size=3, stride=2, HS=False, RE=True, SE=False,
-                      exp_size=64),
-                bneck(in_channels=24, out_channels=24, kernal_size=3, stride=1, HS=False, RE=True, SE=False,
-                      exp_size=72),
-                bneck(in_channels=24, out_channels=40, kernal_size=5, stride=2, HS=False, RE=True, SE=True,
-                      exp_size=72, padding=2),
-                bneck(in_channels=40, out_channels=40, kernal_size=5, stride=1, HS=False, RE=True, SE=True,
-                      exp_size=120, padding=2),
-                bneck(in_channels=40, out_channels=40, kernal_size=5, stride=1, HS=False, RE=True, SE=True,
-                      exp_size=120, padding=2),
-                bneck(in_channels=40, out_channels=80, kernal_size=3, stride=2, HS=True, RE=False, SE=False,
-                      exp_size=240),
-                bneck(in_channels=80, out_channels=80, kernal_size=3, stride=1, HS=True, RE=False, SE=False,
-                      exp_size=200),
-                bneck(in_channels=80, out_channels=80, kernal_size=3, stride=1, HS=True, RE=False, SE=False,
-                      exp_size=184),
-                bneck(in_channels=80, out_channels=80, kernal_size=3, stride=1, HS=True, RE=False, SE=False,
-                      exp_size=184),
-                bneck(in_channels=80, out_channels=112, kernal_size=3, stride=1, HS=True, RE=False, SE=True,
-                      exp_size=480),
-                bneck(in_channels=112, out_channels=112, kernal_size=3, stride=1, HS=True, RE=False, SE=True,
-                      exp_size=672),
-                bneck(in_channels=112, out_channels=160, kernal_size=5, stride=1, HS=True, RE=False, SE=True,
-                      exp_size=672, padding=2),
-                bneck(in_channels=160, out_channels=160, kernal_size=5, stride=2, HS=True, RE=False, SE=True,
-                      exp_size=672, padding=2),
-                bneck(in_channels=160, out_channels=160, kernal_size=5, stride=1, HS=True, RE=False, SE=True,
-                      exp_size=960, padding=2),
-            )
+            self.block = []
+            for in_channels, out_channels, kernal_size, stride, nonlinear, se, exp_size in layers:
+                self.block.append(MobileBlock(in_channels, out_channels, kernal_size, stride, nonlinear, se, exp_size))
+            self.block = nn.Sequential(*self.block)
 
-            self.conv1 = nn.Sequential(
+            self.out_conv1 = nn.Sequential(
                 nn.Conv2d(160, 960, kernel_size=1, stride=1),
                 nn.BatchNorm2d(960),
+                h_swish(inplace=True),
             )
-            self.conv2 = nn.Sequential(
+            self.out_conv2 = nn.Sequential(
                 nn.Conv2d(960, 1280, kernel_size=1, stride=1),
-            )
-            self.conv3 = nn.Sequential(
+                h_swish(inplace=True),
                 nn.Conv2d(1280, self.num_classes, kernel_size=1, stride=1),
             )
 
         elif model_mode == "SMALL":
+            layers = [
+                [16, 16, 3, 2, "RE", True, 16],
+                [16, 24, 3, 2, "RE", False, 72],
+                [24, 24, 3, 1, "RE", False, 88],
+                [24, 40, 5, 2, "RE", True, 96],
+                [40, 40, 5, 1, "RE", True, 240],
+                [40, 40, 5, 1, "RE", True, 240],
+                [40, 48, 5, 1, "HS", True, 120],
+                [48, 48, 5, 1, "HS", True, 144],
+                [48, 96, 5, 2, "HS", True, 288],
+                [96, 96, 5, 1, "HS", True, 576],
+                [96, 96, 5, 1, "HS", True, 576],
+            ]
+
             self.init_conv = nn.Sequential(
                 nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, stride=2, padding=1),
                 nn.BatchNorm2d(16),
+                h_swish(inplace=True),
             )
 
-            self.block = nn.Sequential(
-                bneck(in_channels=16, out_channels=16, kernal_size=3, stride=2, HS=False, RE=True, SE=True,
-                      exp_size=16),
-                bneck(in_channels=16, out_channels=24, kernal_size=3, stride=2, HS=False, RE=True, SE=False,
-                      exp_size=72),
-                bneck(in_channels=24, out_channels=24, kernal_size=3, stride=1, HS=False, RE=True, SE=False,
-                      exp_size=88),
-                bneck(in_channels=24, out_channels=40, kernal_size=5, stride=2, HS=True, RE=False, SE=True,
-                      exp_size=96, padding=2),
-                bneck(in_channels=40, out_channels=40, kernal_size=5, stride=1, HS=True, RE=False, SE=True,
-                      exp_size=240, padding=2),
-                bneck(in_channels=40, out_channels=40, kernal_size=5, stride=1, HS=True, RE=False, SE=True,
-                      exp_size=240, padding=2),
-                bneck(in_channels=40, out_channels=48, kernal_size=5, stride=1, HS=True, RE=False, SE=True,
-                      exp_size=120, padding=2),
-                bneck(in_channels=48, out_channels=48, kernal_size=5, stride=1, HS=True, RE=False, SE=True,
-                      exp_size=144, padding=2),
-                bneck(in_channels=48, out_channels=96, kernal_size=5, stride=2, HS=True, RE=False, SE=True,
-                      exp_size=288, padding=2),
-                bneck(in_channels=96, out_channels=96, kernal_size=5, stride=1, HS=True, RE=False, SE=True,
-                      exp_size=576, padding=2),
-                bneck(in_channels=96, out_channels=96, kernal_size=5, stride=1, HS=True, RE=False, SE=True,
-                      exp_size=576, padding=2),
-            )
+            self.block = []
+            for in_channels, out_channels, kernal_size, stride, nonlinear, se, exp_size in layers:
+                self.block.append(MobileBlock(in_channels, out_channels, kernal_size, stride, nonlinear, se, exp_size))
+            self.block = nn.Sequential(*self.block)
 
-            self.conv1 = nn.Sequential(
+            self.out_conv1 = nn.Sequential(
                 nn.Conv2d(96, 576, kernel_size=1, stride=1),
+                SqueezeBlock(576),
                 nn.BatchNorm2d(576),
+                h_swish(inplace=True),
             )
-
-            self.conv2 = nn.Sequential(
+            self.out_conv2 = nn.Sequential(
                 nn.Conv2d(576, 1280, kernel_size=1, stride=1),
-            )
-
-            self.conv3 = nn.Sequential(
+                h_swish(inplace=True),
                 nn.Conv2d(1280, self.num_classes, kernel_size=1, stride=1),
             )
 
-        # self.apply(_weights_init)
+        self.apply(_weights_init)
 
     def forward(self, x):
-        output = self.init_conv(x)
-        output = self.activation_HS(output + 3.) / 6. * output
-        output = self.block(output)
-        output = self.conv1(output)
-        output = self.activation_HS(output + 3.) / 6. * output
-        batch, channels, height, width = output.size()
-        output = F.avg_pool2d(output, kernel_size=[height, width])
-        output = self.conv2(output)
-        output = self.activation_HS(output + 3.) / 6. * output
-        output = self.conv3(output)
-        output = torch.reshape(output, shape=(-1, self.num_classes))
-        return output
+        out = self.init_conv(x)
+        out = self.block(out)
+        out = self.out_conv1(out)
+        batch, channels, height, width = out.size()
+        out = F.avg_pool2d(out, kernel_size=[height, width])
+        out = self.out_conv2(out).view(batch, -1)
+        return out
 
 
 # temp = torch.zeros((1, 3, 224, 224))
-# model = MobileNetV3()
+# model = MobileNetV3(model_mode="SMALL")
 # print(model(temp).shape)
