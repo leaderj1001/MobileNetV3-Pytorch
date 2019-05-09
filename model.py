@@ -205,5 +205,5 @@ class MobileNetV3(nn.Module):
 
 
 # temp = torch.zeros((1, 3, 224, 224))
-# model = MobileNetV3()
+# model = MobileNetV3(num_classes=100)
 # print(model(temp).shape)
