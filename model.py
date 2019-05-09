@@ -3,11 +3,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import math
+import numpy as np
 
 
 def hard_sigmoid(x):
-    out = x * 0.2 + 0.5
-    out = torch.clamp(out, max=1, min=0)
+    out = (0.2 * x) + 0.5
+    out = F.threshold(-out, -1, -1)
+    out = F.threshold(-out, 0, 0)
     return out
 
 
@@ -79,6 +81,7 @@ class bneck(nn.Module):
             global_pooled_output = torch.reshape(global_pooled_output, shape=(-1, channels))
             squeeze = self.squeeze(global_pooled_output)
             squeeze = torch.reshape(squeeze, shape=(-1, channels, 1, 1))
+            # squeeze = F.sigmoid(squeeze)
             squeeze = hard_sigmoid(squeeze)
             output = original_output * squeeze
 
