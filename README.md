@@ -16,9 +16,10 @@
 
 | Datasets | Model | Accuracy | Epoch | Training Time | Parameters
 | :---: | :---: | :---: | :---: | :---: | :---: |
-CIFAR-100 | MobileNetV3(LARGE) | 64.64% | 62 | 1h 56m | 2.5M
-CIFAR-100 | MobileNetV3(SMALL) | 62.29% | 86 | 2h 17m | 1.2M
-IMAGENET | WORK IN PROCESS | | | |
+CIFAR-100 | MobileNetV3(LARGE) | 68.99% | 63 | 3h 39m | 3.99M
+CIFAR-100 | MobileNetV3(SMALL) | | | |
+IMAGENET | MobileNetV3(LARGE) WORK IN PROCESS | | | | 5.15M
+IMAGENET | MobileNetV3(SMALL) WORK IN PROCESS | | | | 2.94M
 
 ## Requirements
 - torch==1.0.1
