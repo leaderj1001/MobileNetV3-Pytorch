@@ -32,7 +32,7 @@ def get_args():
 
 def adjust_learning_rate(optimizer, epoch, args):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    lr = args.learning_rate * (0.1 ** (epoch // 40))
+    lr = args.learning_rate * (0.1 ** (epoch // 30))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
@@ -88,6 +88,7 @@ def main():
         num_classes = 10
     elif args.dataset_mode is "CIFAR100":
         num_classes = 100
+    print('num_classes: ', num_classes)
 
     if args.load_pretrained:
         model = MobileNetV3(model_mode=args.model_mode, num_classes=num_classes).to(device)
@@ -111,30 +112,31 @@ def main():
         os.mkdir("reporting")
 
     start_time = time.time()
-    for epoch in range(epoch, args.epochs):
-        train(model, train_loader, optimizer, criterion, epoch, args)
-        test_acc = get_test(model, test_loader)
-        if max_test_acc < test_acc:
-            print('Saving..')
-            state = {
-                'model': model.state_dict(),
-                'acc': test_acc,
-                'epoch': epoch,
-            }
-            if not os.path.isdir('checkpoint'):
-                os.mkdir('checkpoint')
-            filename = "best_model_"
-            torch.save(state, './checkpoint/' + filename + 'ckpt.t7')
-            max_test_acc = test_acc
+    with open("./reporting/" + "best_model.txt", "w") as f:
+        for epoch in range(epoch, args.epochs):
+            train(model, train_loader, optimizer, criterion, epoch, args)
+            test_acc = get_test(model, test_loader)
+            if max_test_acc < test_acc:
+                print('Saving..')
+                state = {
+                    'model': model.state_dict(),
+                    'acc': test_acc,
+                    'epoch': epoch,
+                }
+                if not os.path.isdir('checkpoint'):
+                    os.mkdir('checkpoint')
+                filename = "best_model_"
+                torch.save(state, './checkpoint/' + filename + 'ckpt.t7')
+                max_test_acc = test_acc
 
-        time_interval = time.time() - start_time
-        time_split = time.gmtime(time_interval)
-        print("Training time: ", time_interval, "Hour: ", time_split.tm_hour, "Minute: ", time_split.tm_min, "Second: ", time_split.tm_sec, end='')
-        print(" Test acc:", max_test_acc, "time: ", time.time() - start_time)
-        with open("./reporting/" + "best_model.txt", "w") as f:
-            f.write("Epoch: " + str(epoch) + " " + "Best acc: " + str(max_test_acc) + "\n")
-            f.write("Training time: " + str(time_interval) + "Hour: " + str(time_split.tm_hour) + "Minute: " + str(
-                time_split.tm_min) + "Second: " + str(time_split.tm_sec))
+            time_interval = time.time() - start_time
+            time_split = time.gmtime(time_interval)
+            print("Training time: ", time_interval, "Hour: ", time_split.tm_hour, "Minute: ", time_split.tm_min, "Second: ", time_split.tm_sec, end='')
+            print(" Test acc:", max_test_acc, "time: ", time.time() - start_time)
+
+            f.write("Epoch: " + str(epoch) + " " + " Best acc: " + str(max_test_acc) + " Test acc: " + str(test_acc) + "\n")
+            f.write("Training time: " + str(time_interval) + " Hour: " + str(time_split.tm_hour) + " Minute: " + str(
+                time_split.tm_min) + " Second: " + str(time_split.tm_sec))
             f.write("\n")
 
 
