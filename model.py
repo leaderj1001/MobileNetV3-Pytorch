@@ -46,9 +46,9 @@ class bneck(nn.Module):
 
         if self.SE == True:
             self.squeeze = nn.Sequential(
-                nn.Linear(exp_size, exp_size),
+                nn.Linear(exp_size, exp_size // 4),
                 nn.ReLU(inplace=True),
-                nn.Linear(exp_size, exp_size),
+                nn.Linear(exp_size // 4, exp_size),
             )
 
         self.conv1x1 = nn.Sequential(
