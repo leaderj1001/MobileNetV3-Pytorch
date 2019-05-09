@@ -6,6 +6,7 @@
 
 ## Todo
 - Experimental need for ImageNet dataset.
+- Code refactoring
 
 ## MobileNetV3 Block
 ![캡처](https://user-images.githubusercontent.com/22078438/57360577-6f30d000-71b5-11e9-89a6-24034a3ecdde.PNG)
