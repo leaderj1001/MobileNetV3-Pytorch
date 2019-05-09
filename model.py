@@ -15,10 +15,9 @@ def hard_sigmoid(x):
 
 def _weights_init(m):
     if isinstance(m, nn.Conv2d):
-        n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-        m.weight.data.normal_(0, math.sqrt(2. / n))
+        torch.nn.init.xavier_uniform_(m.weight)
         if m.bias is not None:
-            m.bias.data.zero_()
+            torch.nn.init.zeros_(m.bias)
     elif isinstance(m, nn.BatchNorm2d):
         m.weight.data.fill_(1)
         m.bias.data.zero_()
