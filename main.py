@@ -84,9 +84,9 @@ def main():
     args = get_args()
     train_loader, test_loader = load_data(args)
 
-    if args.dataset_mode is "CIFAR10":
+    if args.dataset_mode == "CIFAR10":
         num_classes = 10
-    elif args.dataset_mode is "CIFAR100":
+    elif args.dataset_mode == "CIFAR100":
         num_classes = 100
     print('num_classes: ', num_classes)
 
