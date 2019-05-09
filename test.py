@@ -47,6 +47,7 @@ def main():
         end_epoch = checkpoint['epoch']
         best_acc = checkpoint['acc']
         print("[Saved Best Accuracy]: ", best_acc, '%', "[End epochs]: ", end_epoch)
+        print("Number of model parameters: ", get_model_parameters(model))
 
         model.eval()
         correct = 0
@@ -59,7 +60,7 @@ def main():
 
     else:
         assert os.path.exists("./checkpoint/" + str(args.seed) + "ckpt.t7"), "File not found. Please check again."
-    print("Number of model parameters: ", get_model_parameters(model))
+
 
 
 if __name__ == "__main__":
