@@ -25,7 +25,7 @@ def get_model_parameters(model):
 def main():
     parser = argparse.ArgumentParser("parameters")
 
-    parser.add_argument('--batch-size', type=int, default=16, help='batch size, (default: 100)')
+    parser.add_argument('--batch-size', type=int, default=128, help='batch size, (default: 128)')
     parser.add_argument('--dataset-mode', type=str, default="CIFAR100", help="which dataset you use, (example: CIFAR10, CIFAR100), (default: CIFAR100)")
     parser.add_argument('--is-train', type=bool, default=False, help="True if training, False if test. (default: False)")
     parser.add_argument('--model-mode', type=str, default="LARGE", help="(example: LARGE, SMALL), (default: LARGE)")
@@ -60,7 +60,6 @@ def main():
 
     else:
         assert os.path.exists("./checkpoint/" + str(args.seed) + "ckpt.t7"), "File not found. Please check again."
-
 
 
 if __name__ == "__main__":
