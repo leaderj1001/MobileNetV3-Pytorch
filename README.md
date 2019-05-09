@@ -12,7 +12,7 @@
 ![캡처](https://user-images.githubusercontent.com/22078438/57360577-6f30d000-71b5-11e9-89a6-24034a3ecdde.PNG)
 
 ## Experiments
-- For CIFAR-10 and CIFAR-100 data, I experimented with resize (224, 224).<br>
+- For CIFAR-100 data, I experimented with resize (224, 224).<br>
 
 | Datasets | Model | Accuracy | Epoch | Training Time | Parameters
 | :---: | :---: | :---: | :---: | :---: | :---: |
