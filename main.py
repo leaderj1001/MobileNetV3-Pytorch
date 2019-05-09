@@ -84,16 +84,16 @@ def main():
     args = get_args()
     train_loader, test_loader = load_data(args)
 
-    if args.dataset_mode is "CIFAR10":
+    if args.dataset_mode == "CIFAR10":
         num_classes = 10
-    elif args.dataset_mode is "CIFAR100":
+    elif args.dataset_mode == "CIFAR100":
         num_classes = 100
     print('num_classes: ', num_classes)
 
     if args.load_pretrained:
         model = MobileNetV3(model_mode=args.model_mode, num_classes=num_classes).to(device)
-        filename = "best_model_"
-        checkpoint = torch.load('./checkpoint/' + filename + 'ckpt.t7')
+        filename = "best_model_" + str(args.model_mode)
+        checkpoint = torch.load('./checkpoint/' + filename + '_ckpt.t7')
         model.load_state_dict(checkpoint['model'])
         epoch = checkpoint['epoch']
         acc = checkpoint['acc']
@@ -112,7 +112,7 @@ def main():
         os.mkdir("reporting")
 
     start_time = time.time()
-    with open("./reporting/" + "best_model.txt", "w") as f:
+    with open("./reporting/" + "best_model_" + args.model_mode + ".txt", "w") as f:
         for epoch in range(epoch, args.epochs):
             train(model, train_loader, optimizer, criterion, epoch, args)
             test_acc = get_test(model, test_loader)
@@ -125,8 +125,8 @@ def main():
                 }
                 if not os.path.isdir('checkpoint'):
                     os.mkdir('checkpoint')
-                filename = "best_model_"
-                torch.save(state, './checkpoint/' + filename + 'ckpt.t7')
+                filename = "best_model_" + str(args.model_mode)
+                torch.save(state, './checkpoint/' + filename + '_ckpt.t7')
                 max_test_acc = test_acc
 
             time_interval = time.time() - start_time

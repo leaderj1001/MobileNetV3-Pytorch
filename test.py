@@ -41,8 +41,8 @@ def main():
 
     if os.path.exists("./checkpoint"):
         model = MobileNetV3(model_mode=args.model_mode, num_classes=num_classes).to(device)
-        filename = "best_model_"
-        checkpoint = torch.load('./checkpoint/' + filename + 'ckpt.t7')
+        filename = "best_model_" + str(args.model_mode)
+        checkpoint = torch.load('./checkpoint/' + filename + '_ckpt.t7')
         model.load_state_dict(checkpoint['model'])
         end_epoch = checkpoint['epoch']
         best_acc = checkpoint['acc']
