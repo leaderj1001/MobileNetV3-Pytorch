@@ -10,7 +10,7 @@ from torchvision import datasets, transforms
 # mean, [0.5071, 0.4865, 0.4409]
 # std, [0.2673, 0.2564, 0.2762]
 def load_data(args):
-    if args.dataset_mode is "CIFAR100":
+    if args.dataset_mode == "CIFAR100":
         transform_train = transforms.Compose([
             transforms.Resize(224),
             transforms.RandomCrop(224, padding=4),
@@ -37,7 +37,7 @@ def load_data(args):
             shuffle=False,
             num_workers=2
         )
-    elif args.dataset_mode is "CIFAR10":
+    elif args.dataset_mode == "CIFAR10":
         transform_train = transforms.Compose([
             transforms.Resize(224),
             transforms.RandomCrop(224, padding=4),
