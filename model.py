@@ -5,6 +5,12 @@ import torch.nn.functional as F
 import math
 
 
+def hard_sigmoid(x):
+    out = x * 0.2 + 0.5
+    out = torch.clamp(out, max=1, min=0)
+    return out
+
+
 def _weights_init(m):
     if isinstance(m, nn.Conv2d):
         n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -66,20 +72,23 @@ class bneck(nn.Module):
         output = self.depth_conv(output)
         batch, channels, height, width = output.size()
         original_output = output
+
+        # Squeeze and Excite
         if self.SE == True:
-            # Squeeze and Excite
             global_pooled_output = F.avg_pool2d(output, kernel_size=[height, width])
             global_pooled_output = torch.reshape(global_pooled_output, shape=(-1, channels))
             squeeze = self.squeeze(global_pooled_output)
             squeeze = torch.reshape(squeeze, shape=(-1, channels, 1, 1))
-            squeeze = torch.sigmoid(squeeze) * squeeze
+            squeeze = hard_sigmoid(squeeze)
             output = original_output * squeeze
 
+        # point-wise conv
         output = self.conv1x1(output)
         if self.RE == True:
             output = self.activation_RE(output)
         elif self.HS == True:
             output = self.activation_HS(output + 3) / 6 * output
+
         if self.use_connect:
             return x + output
         else:
@@ -205,5 +214,5 @@ class MobileNetV3(nn.Module):
 
 
 # temp = torch.zeros((1, 3, 224, 224))
-# model = MobileNetV3(num_classes=100)
+# model = MobileNetV3()
 # print(model(temp).shape)
