@@ -79,7 +79,7 @@ class bneck(nn.Module):
             global_pooled_output = torch.reshape(global_pooled_output, shape=(-1, channels))
             squeeze = self.squeeze(global_pooled_output)
             squeeze = torch.reshape(squeeze, shape=(-1, channels, 1, 1))
-            squeeze = hard_sigmoid(squeeze)
+            squeeze = torch.sigmoid(squeeze)
             output = original_output * squeeze
 
         # point-wise conv
