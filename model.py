@@ -8,8 +8,8 @@ import numpy as np
 
 def hard_sigmoid(x):
     out = (0.2 * x) + 0.5
-    out = F.threshold(-out, -1, -1)
-    out = F.threshold(-out, 0, 0)
+    out = F.threshold(-out, -1., -1.)
+    out = F.threshold(-out, 0., 0.)
     return out
 
 
@@ -69,7 +69,7 @@ class bneck(nn.Module):
         if self.RE == True:
             output = self.activation_RE(output)
         elif self.HS == True:
-            output = self.activation_HS(output + 3) / 6 * output
+            output = self.activation_HS(output + 3.) / 6. * output
         output = self.depth_conv(output)
         batch, channels, height, width = output.size()
         original_output = output
@@ -89,7 +89,7 @@ class bneck(nn.Module):
         if self.RE == True:
             output = self.activation_RE(output)
         elif self.HS == True:
-            output = self.activation_HS(output + 3) / 6 * output
+            output = self.activation_HS(output + 3.) / 6. * output
 
         if self.use_connect:
             return x + output
@@ -202,14 +202,14 @@ class MobileNetV3(nn.Module):
 
     def forward(self, x):
         output = self.init_conv(x)
-        output = self.activation_HS(output + 3) / 6 * output
+        output = self.activation_HS(output + 3.) / 6. * output
         output = self.block(output)
         output = self.conv1(output)
-        output = self.activation_HS(output + 3) / 6 * output
+        output = self.activation_HS(output + 3.) / 6. * output
         batch, channels, height, width = output.size()
         output = F.avg_pool2d(output, kernel_size=[height, width])
         output = self.conv2(output)
-        output = self.activation_HS(output + 3) / 6 * output
+        output = self.activation_HS(output + 3.) / 6. * output
         output = self.conv3(output)
         output = torch.reshape(output, shape=(-1, self.num_classes))
         return output
