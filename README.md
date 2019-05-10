@@ -16,8 +16,8 @@
 
 | Datasets | Model | acc1 | acc5 | Epoch  | Parameters
 | :---: | :---: | :---: | :---: | :---: | :---: |
-CIFAR-100 | MobileNetV3(LARGE) | 69.64% | 90.68% | 37 | 3.99M
-CIFAR-100 | MobileNetV3(SMALL) | | | | | 1.7M
+CIFAR-100 | MobileNetV3(LARGE) | 70.44% | 91.34% | 80 | 3.99M
+CIFAR-100 | MobileNetV3(SMALL) | 67.04% | 89.41% | 55 | 1.7M
 IMAGENET | MobileNetV3(LARGE) WORK IN PROCESS | | | | 5.15M
 IMAGENET | MobileNetV3(SMALL) WORK IN PROCESS | | | | 2.94M
 
