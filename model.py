@@ -30,19 +30,19 @@ def _weights_init(m):
 class h_sigmoid(nn.Module):
     def __init__(self, inplace=True):
         super(h_sigmoid, self).__init__()
-        self.activation = nn.ReLU6(inplace=inplace)
+        self.inplace = inplace
 
     def forward(self, x):
-        return self.activation(x + 3.) / 6.
+        return F.relu6(x + 3., inplace=self.inplace) / 6.
 
 
 class h_swish(nn.Module):
     def __init__(self, inplace=True):
         super(h_swish, self).__init__()
-        self.activation = nn.ReLU6(inplace=inplace)
+        self.inplace = inplace
 
     def forward(self, x):
-        out = self.activation(x + 3.) / 6.
+        out = F.relu6(x + 3., self.inplace) / 6.
         return out * x
 
 
