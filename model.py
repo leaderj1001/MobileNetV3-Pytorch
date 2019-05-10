@@ -3,6 +3,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+def get_model_parameters(model):
+    total_parameters = 0
+    for layer in list(model.parameters()):
+        layer_parameter = 1
+        for l in list(layer.size()):
+            layer_parameter *= l
+        total_parameters += layer_parameter
+    return total_parameters
+
+
 def _weights_init(m):
     if isinstance(m, nn.Conv2d):
         torch.nn.init.xavier_uniform_(m.weight)
@@ -17,21 +27,33 @@ def _weights_init(m):
         m.bias.data.zero_()
 
 
-def hard_sigmoid(x):
-    out = (0.2 * x) + 0.5
-    out = F.threshold(-out, -1., -1.)
-    out = F.threshold(-out, 0., 0.)
-    return out
+class h_sigmoid(nn.Module):
+    def __init__(self, inplace=True):
+        super(h_sigmoid, self).__init__()
+        self.activation = nn.ReLU6(inplace=inplace)
+
+    def forward(self, x):
+        return self.activation(x + 3.) / 6.
 
 
 class h_swish(nn.Module):
     def __init__(self, inplace=True):
         super(h_swish, self).__init__()
-        self.activation = nn.ReLU6(inplace)
+        self.activation = nn.ReLU6(inplace=inplace)
 
     def forward(self, x):
         out = self.activation(x + 3.) / 6.
         return out * x
+
+
+def _make_divisible(v, divisor=8, min_value=None):
+    if min_value is None:
+        min_value = divisor
+    new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
+    # Make sure that round down does not go down by more than 10%.
+    if new_v < 0.9 * v:
+        new_v += divisor
+    return new_v
 
 
 class SqueezeBlock(nn.Module):
@@ -40,7 +62,8 @@ class SqueezeBlock(nn.Module):
         self.dense = nn.Sequential(
             nn.Linear(exp_size, exp_size // divide),
             nn.ReLU(inplace=True),
-            nn.Linear(exp_size // divide, exp_size)
+            nn.Linear(exp_size // divide, exp_size),
+            h_sigmoid()
         )
 
     def forward(self, x):
@@ -48,17 +71,18 @@ class SqueezeBlock(nn.Module):
         out = F.avg_pool2d(x, kernel_size=[height, width]).view(batch, -1)
         out = self.dense(out)
         out = out.view(batch, channels, 1, 1)
-        out = hard_sigmoid(out)
+        # out = hard_sigmoid(out)
 
         return out * x
 
 
 class MobileBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernal_size, stride, nonLinear, SE, exp_size):
+    def __init__(self, in_channels, out_channels, kernal_size, stride, nonLinear, SE, exp_size, dropout_rate=1.0):
         super(MobileBlock, self).__init__()
         self.out_channels = out_channels
         self.nonLinear = nonLinear
         self.SE = SE
+        self.dropout_rate = dropout_rate
         padding = (kernal_size - 1) // 2
 
         self.use_connect = stride == 1 and in_channels == out_channels
@@ -107,7 +131,7 @@ class MobileBlock(nn.Module):
 
 
 class MobileNetV3(nn.Module):
-    def __init__(self, model_mode="LARGE", num_classes=1000):
+    def __init__(self, model_mode="LARGE", num_classes=1000, multiplier=1.0):
         super(MobileNetV3, self).__init__()
         self.activation_HS = nn.ReLU6(inplace=True)
         self.num_classes = num_classes
@@ -133,26 +157,35 @@ class MobileNetV3(nn.Module):
                 [160, 160, 5, 2, "HS", True, 672],
                 [160, 160, 5, 1, "HS", True, 960],
             ]
+            init_conv_out = _make_divisible(16 * multiplier)
             self.init_conv = nn.Sequential(
-                nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, stride=2, padding=1),
-                nn.BatchNorm2d(16),
+                nn.Conv2d(in_channels=3, out_channels=init_conv_out, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(init_conv_out),
                 h_swish(inplace=True),
             )
 
             self.block = []
             for in_channels, out_channels, kernal_size, stride, nonlinear, se, exp_size in layers:
+                in_channels = _make_divisible(in_channels * multiplier)
+                out_channels = _make_divisible(out_channels * multiplier)
+                exp_size = _make_divisible(exp_size * multiplier)
                 self.block.append(MobileBlock(in_channels, out_channels, kernal_size, stride, nonlinear, se, exp_size))
             self.block = nn.Sequential(*self.block)
 
+            out_conv1_in = _make_divisible(160 * multiplier)
+            out_conv1_out = _make_divisible(960 * multiplier)
             self.out_conv1 = nn.Sequential(
-                nn.Conv2d(160, 960, kernel_size=1, stride=1),
-                nn.BatchNorm2d(960),
+                nn.Conv2d(out_conv1_in, out_conv1_out, kernel_size=1, stride=1),
+                nn.BatchNorm2d(out_conv1_out),
                 h_swish(inplace=True),
             )
+
+            out_conv2_in = _make_divisible(960 * multiplier)
+            out_conv2_out = _make_divisible(1280 * multiplier)
             self.out_conv2 = nn.Sequential(
-                nn.Conv2d(960, 1280, kernel_size=1, stride=1),
+                nn.Conv2d(out_conv2_in, out_conv2_out, kernel_size=1, stride=1),
                 h_swish(inplace=True),
-                nn.Conv2d(1280, self.num_classes, kernel_size=1, stride=1),
+                nn.Conv2d(out_conv2_out, self.num_classes, kernel_size=1, stride=1),
             )
 
         elif model_mode == "SMALL":
@@ -170,27 +203,36 @@ class MobileNetV3(nn.Module):
                 [96, 96, 5, 1, "HS", True, 576],
             ]
 
+            init_conv_out = _make_divisible(16 * multiplier)
             self.init_conv = nn.Sequential(
-                nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, stride=2, padding=1),
-                nn.BatchNorm2d(16),
+                nn.Conv2d(in_channels=3, out_channels=init_conv_out, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(init_conv_out),
                 h_swish(inplace=True),
             )
 
             self.block = []
             for in_channels, out_channels, kernal_size, stride, nonlinear, se, exp_size in layers:
+                in_channels = _make_divisible(in_channels * multiplier)
+                out_channels = _make_divisible(out_channels * multiplier)
+                exp_size = _make_divisible(exp_size * multiplier)
                 self.block.append(MobileBlock(in_channels, out_channels, kernal_size, stride, nonlinear, se, exp_size))
             self.block = nn.Sequential(*self.block)
 
+            out_conv1_in = _make_divisible(96 * multiplier)
+            out_conv1_out = _make_divisible(576 * multiplier)
             self.out_conv1 = nn.Sequential(
-                nn.Conv2d(96, 576, kernel_size=1, stride=1),
-                SqueezeBlock(576),
-                nn.BatchNorm2d(576),
+                nn.Conv2d(out_conv1_in, out_conv1_out, kernel_size=1, stride=1),
+                SqueezeBlock(out_conv1_out),
+                nn.BatchNorm2d(out_conv1_out),
                 h_swish(inplace=True),
             )
+
+            out_conv2_in = _make_divisible(576 * multiplier)
+            out_conv2_out = _make_divisible(1280 * multiplier)
             self.out_conv2 = nn.Sequential(
-                nn.Conv2d(576, 1280, kernel_size=1, stride=1),
+                nn.Conv2d(out_conv2_in, out_conv2_out, kernel_size=1, stride=1),
                 h_swish(inplace=True),
-                nn.Conv2d(1280, self.num_classes, kernel_size=1, stride=1),
+                nn.Conv2d(out_conv2_out, self.num_classes, kernel_size=1, stride=1),
             )
 
         self.apply(_weights_init)
@@ -206,5 +248,6 @@ class MobileNetV3(nn.Module):
 
 
 # temp = torch.zeros((1, 3, 224, 224))
-# model = MobileNetV3(model_mode="SMALL")
+# model = MobileNetV3(model_mode="LARGE", num_classes=1000, multiplier=1.0)
 # print(model(temp).shape)
+# print(get_model_parameters(model))
