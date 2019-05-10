@@ -14,10 +14,10 @@
 ## Experiments
 - For CIFAR-100 data, I experimented with resize (224, 224).<br>
 
-| Datasets | Model | Accuracy | Epoch | Training Time | Parameters
+| Datasets | Model | acc1 | acc5 | Epoch  | Parameters
 | :---: | :---: | :---: | :---: | :---: | :---: |
-CIFAR-100 | MobileNetV3(LARGE) | 68.99% | 63 | 3h 39m | 3.99M
-CIFAR-100 | MobileNetV3(SMALL) | 67.75% | 61 | 2h 2m | 1.7M
+CIFAR-100 | MobileNetV3(LARGE) | 69.64% | 90.68% | 37 | 3.99M
+CIFAR-100 | MobileNetV3(SMALL) | | | | | 1.7M
 IMAGENET | MobileNetV3(LARGE) WORK IN PROCESS | | | | 5.15M
 IMAGENET | MobileNetV3(SMALL) WORK IN PROCESS | | | | 2.94M
 
