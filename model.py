@@ -133,9 +133,7 @@ class MobileBlock(nn.Module):
 class MobileNetV3(nn.Module):
     def __init__(self, model_mode="LARGE", num_classes=1000, multiplier=1.0):
         super(MobileNetV3, self).__init__()
-        self.activation_HS = nn.ReLU6(inplace=True)
         self.num_classes = num_classes
-        print("num classes: ", self.num_classes)
 
         if model_mode == "LARGE":
             layers = [

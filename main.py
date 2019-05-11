@@ -17,15 +17,19 @@ device = torch.device("cuda" if use_cuda else "cpu")
 def get_args():
     parser = argparse.ArgumentParser("parameters")
 
-    parser.add_argument("--dataset-mode", type=str, default="CIFAR100", help="(example: CIFAR10, CIFAR100), (default: CIFAR100)")
+    parser.add_argument("--dataset-mode", type=str, default="IMAGENET", help="(example: CIFAR10, CIFAR100, IMAGENET), (default: IMAGENET)")
     parser.add_argument("--epochs", type=int, default=100, help="number of epochs, (default: 100)")
-    parser.add_argument("--batch-size", type=int, default=128, help="number of batch size, (default, 128)")
+    parser.add_argument("--batch-size", type=int, default=512, help="number of batch size, (default, 512)")
     parser.add_argument("--learning-rate", type=float, default=1e-1, help="learning_rate, (default: 1e-1)")
-    parser.add_argument("--dropout", type=float, default=0.3, help="dropout rate, (default: 0.8)")
+    parser.add_argument("--dropout", type=float, default=0.8, help="dropout rate, not implemented yet, (default: 0.8)")
     parser.add_argument('--model-mode', type=str, default="LARGE", help="(example: LARGE, SMALL), (default: LARGE)")
     parser.add_argument("--load-pretrained", type=bool, default=False, help="(default: False)")
     parser.add_argument('--evaluate', type=bool, default=False, help="Testing time: True, (default: False)")
     parser.add_argument('--multiplier', type=float, default=1.0, help="(default: 1.0)")
+    parser.add_argument('--print-interval', type=int, default=5, help="training information and evaluation information output frequency, (default: 5)")
+    parser.add_argument('--data', type=str, default='D:/ILSVRC/Data/CLS-LOC', help="image data path")
+    parser.add_argument('--workers', type=int, default=4, help="number of data load worker, (default: 4)")
+    parser.add_argument('--distributed', type=bool, default=False)
 
     args = parser.parse_args()
 
@@ -106,7 +110,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         batch_time.update(time.time() - end)
         end = time.time()
 
-        if i % 100 == 0:
+        if i % args.print_interval == 0:
             progress.print(i)
 
 
@@ -120,7 +124,6 @@ def validate(val_loader, model, criterion, args):
 
     # switch to evaluate mode
     model.eval()
-
     with torch.no_grad():
         end = time.time()
         for i, (data, target) in enumerate(val_loader):
@@ -143,7 +146,7 @@ def validate(val_loader, model, criterion, args):
             batch_time.update(time.time() - end)
             end = time.time()
 
-            if i % 100 == 0:
+            if i % args.print_interval == 0:
                 progress.print(i)
 
         # TODO: this should also be done with the ProgressMeter
@@ -195,6 +198,8 @@ def main():
         num_classes = 10
     elif args.dataset_mode == "CIFAR100":
         num_classes = 100
+    elif args.dataset_mode == "IMAGENET":
+        num_classes = 1000
     print('num_classes: ', num_classes)
 
     if args.load_pretrained or args.evaluate:
@@ -208,11 +213,14 @@ def main():
         best_acc1 = acc1
         print("Load Model Accuracy1: ", acc1, " acc5: ", acc5, "Load Model end epoch: ", epoch)
     else:
+        print("init model load ...")
         model = MobileNetV3(model_mode=args.model_mode, num_classes=num_classes, multiplier=args.multiplier).to(device)
         epoch = 1
         best_acc1 = 0
-    # if device is "cuda":
-    #     model = nn.DataParallel(model)
+
+    if torch.cuda.device_count() > 1:
+        print("num GPUs: ", torch.cuda.device_count())
+        model = nn.DataParallel(model).to(device)
     optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=1e-5, momentum=0.9)
     # optimizer = optim.RMSprop(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=1e-5)
     criterion = nn.CrossEntropyLoss().to(device)
