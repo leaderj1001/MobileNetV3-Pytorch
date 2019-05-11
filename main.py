@@ -27,8 +27,8 @@ def get_args():
     parser.add_argument('--evaluate', type=bool, default=False, help="Testing time: True, (default: False)")
     parser.add_argument('--multiplier', type=float, default=1.0, help="(default: 1.0)")
     parser.add_argument('--print-interval', type=int, default=5, help="training information and evaluation information output frequency, (default: 5)")
-    parser.add_argument('--data', type=str, default='D:/ILSVRC/Data/CLS-LOC', help="image data path")
-    parser.add_argument('--workers', type=int, default=4, help="number of data load worker, (default: 4)")
+    parser.add_argument('--data', default='D:/ILSVRC/Data/CLS-LOC')
+    parser.add_argument('--workers', type=int, default=4)
     parser.add_argument('--distributed', type=bool, default=False)
 
     args = parser.parse_args()
@@ -202,8 +202,12 @@ def main():
         num_classes = 1000
     print('num_classes: ', num_classes)
 
+    model = MobileNetV3(model_mode=args.model_mode, num_classes=num_classes, multiplier=args.multiplier).to(device)
+    if torch.cuda.device_count() > 1:
+        print("num GPUs: ", torch.cuda.device_count())
+        model = nn.DataParallel(model).to(device)
+
     if args.load_pretrained or args.evaluate:
-        model = MobileNetV3(model_mode=args.model_mode, num_classes=num_classes, multiplier=args.multiplier).to(device)
         filename = "best_model_" + str(args.model_mode)
         checkpoint = torch.load('./checkpoint/' + filename + '_ckpt.t7')
         model.load_state_dict(checkpoint['model'])
@@ -214,13 +218,9 @@ def main():
         print("Load Model Accuracy1: ", acc1, " acc5: ", acc5, "Load Model end epoch: ", epoch)
     else:
         print("init model load ...")
-        model = MobileNetV3(model_mode=args.model_mode, num_classes=num_classes, multiplier=args.multiplier).to(device)
         epoch = 1
         best_acc1 = 0
 
-    if torch.cuda.device_count() > 1:
-        print("num GPUs: ", torch.cuda.device_count())
-        model = nn.DataParallel(model).to(device)
     optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=1e-5, momentum=0.9)
     # optimizer = optim.RMSprop(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=1e-5)
     criterion = nn.CrossEntropyLoss().to(device)
