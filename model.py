@@ -77,12 +77,11 @@ class SqueezeBlock(nn.Module):
 
 
 class MobileBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernal_size, stride, nonLinear, SE, exp_size, dropout_rate=1.0):
+    def __init__(self, in_channels, out_channels, kernal_size, stride, nonLinear, SE, exp_size):
         super(MobileBlock, self).__init__()
         self.out_channels = out_channels
         self.nonLinear = nonLinear
         self.SE = SE
-        self.dropout_rate = dropout_rate
         padding = (kernal_size - 1) // 2
 
         self.use_connect = stride == 1 and in_channels == out_channels
@@ -131,7 +130,7 @@ class MobileBlock(nn.Module):
 
 
 class MobileNetV3(nn.Module):
-    def __init__(self, model_mode="LARGE", num_classes=1000, multiplier=1.0):
+    def __init__(self, model_mode="LARGE", num_classes=1000, multiplier=1.0, dropout_rate=0.0):
         super(MobileNetV3, self).__init__()
         self.num_classes = num_classes
 
@@ -183,6 +182,7 @@ class MobileNetV3(nn.Module):
             self.out_conv2 = nn.Sequential(
                 nn.Conv2d(out_conv2_in, out_conv2_out, kernel_size=1, stride=1),
                 h_swish(inplace=True),
+                nn.Dropout(dropout_rate),
                 nn.Conv2d(out_conv2_out, self.num_classes, kernel_size=1, stride=1),
             )
 
@@ -230,6 +230,7 @@ class MobileNetV3(nn.Module):
             self.out_conv2 = nn.Sequential(
                 nn.Conv2d(out_conv2_in, out_conv2_out, kernel_size=1, stride=1),
                 h_swish(inplace=True),
+                nn.Dropout(dropout_rate),
                 nn.Conv2d(out_conv2_out, self.num_classes, kernel_size=1, stride=1),
             )
 
