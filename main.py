@@ -202,7 +202,7 @@ def main():
         num_classes = 1000
     print('num_classes: ', num_classes)
 
-    model = MobileNetV3(model_mode=args.model_mode, num_classes=num_classes, multiplier=args.multiplier).to(device)
+    model = MobileNetV3(model_mode=args.model_mode, num_classes=num_classes, multiplier=args.multiplier, dropout_rate=args.dropout).to(device)
     if torch.cuda.device_count() >= 1:
         print("num GPUs: ", torch.cuda.device_count())
         model = nn.DataParallel(model).to(device)
