@@ -13,7 +13,6 @@
 
 ## Experiments
 - For CIFAR-100 data, I experimented with resize (224, 224).<br>
-- Lack of GPUs... T.T
 
 | Datasets | Model | acc1 | acc5 | Epoch  | Parameters
 | :---: | :---: | :---: | :---: | :---: | :---: |
